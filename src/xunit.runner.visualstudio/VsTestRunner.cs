@@ -78,9 +78,9 @@ namespace Xunit.Runner.VisualStudio.TestAdapter
             var loggerHelper = new LoggerHelper(logger, stopwatch);
 
 #if NET452 || NETCOREAPP1_0
-            // Reads settings like disabling appdomains, parallel etc.
-            // Do this first before invoking any thing else to ensure correct settings for the run
             RunSettingsHelper.ReadRunSettings(discoveryContext?.RunSettings?.SettingsXml);
+            if (!ValidateRuntimeFramework())
+                return;
 #endif
 
             var testPlatformContext = new TestPlatformContext
@@ -88,7 +88,7 @@ namespace Xunit.Runner.VisualStudio.TestAdapter
                 // Discovery from command line (non designmode) never requires source information
                 // since there is no session or command line runner doesn't send back VSTestCase objects
                 // back to adapter.
-                RequireSourceInformation = RunSettingsHelper.DesignMode,
+                RequireSourceInformation = RunSettingsHelper.CollectSourceInformation,
 
                 // Command line runner could request for Discovery in case of running specific tests. We need
                 // the XunitTestCase serialized in this scenario.
@@ -110,16 +110,16 @@ namespace Xunit.Runner.VisualStudio.TestAdapter
             var logger = new LoggerHelper(frameworkHandle, stopwatch);
 
 #if NET452 || NETCOREAPP1_0
-            // Reads settings like disabling appdomains, parallel etc.
-            // Do this first before invoking any thing else to ensure correct settings for the run
             RunSettingsHelper.ReadRunSettings(runContext?.RunSettings?.SettingsXml);
+            if (!ValidateRuntimeFramework())
+                return;
 #endif
 
             // In the context of Run All tests, commandline runner doesn't require source information or
             // serialized xunit test case property
             var testPlatformContext = new TestPlatformContext
             {
-                RequireSourceInformation = RunSettingsHelper.DesignMode,
+                RequireSourceInformation = RunSettingsHelper.CollectSourceInformation,
                 RequireXunitTestProperty = RunSettingsHelper.DesignMode
             };
 
@@ -163,8 +163,6 @@ namespace Xunit.Runner.VisualStudio.TestAdapter
             var logger = new LoggerHelper(frameworkHandle, stopwatch);
 
 #if NET452 || NETCOREAPP1_0
-            // Reads settings like disabling appdomains, parallel etc.
-            // Do this first before invoking any thing else to ensure correct settings for the run
             RunSettingsHelper.ReadRunSettings(runContext?.RunSettings?.SettingsXml);
 #endif
 
@@ -172,7 +170,7 @@ namespace Xunit.Runner.VisualStudio.TestAdapter
             // serialized xunit test case property
             var testPlatformContext = new TestPlatformContext
             {
-                RequireSourceInformation = RunSettingsHelper.DesignMode,
+                RequireSourceInformation = RunSettingsHelper.CollectSourceInformation,
                 RequireXunitTestProperty = RunSettingsHelper.DesignMode
             };
 
@@ -712,6 +710,22 @@ namespace Xunit.Runner.VisualStudio.TestAdapter
 
             return result;
 #endif
+        }
+
+        /// <summary>
+        /// Validates the runtime target framework from test platform with the current adapter's target.
+        /// </summary>
+        /// <returns>True if the target frameworks match.</returns>
+        static bool ValidateRuntimeFramework()
+        {
+#if NETCOREAPP1_0
+            var targetFrameworkVersion = RunSettingsHelper.TargetFrameworkVersion;
+
+            return targetFrameworkVersion.StartsWith(".NETCore", StringComparison.OrdinalIgnoreCase) ||
+                   targetFrameworkVersion.StartsWith("FrameworkCore", StringComparison.OrdinalIgnoreCase);
+#endif
+
+            return true;
         }
 
         class AssemblyDiscoveredInfo
